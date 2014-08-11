@@ -1,4 +1,5 @@
 import Data.Map
+import Data.Maybe
 import Control.Monad
 import System.IO.Unsafe
 
@@ -21,6 +22,9 @@ toChar Polar = 'P'
 
 fromString :: String -> [Element]
 fromString = Prelude.map fromChar
+
+toString :: [Element] -> String
+toString = Prelude.map toChar
 
 isFree :: ProteinMap -> Position -> Bool
 isFree placements position = (Data.Map.lookup position placements) == Nothing
@@ -49,11 +53,13 @@ printPlacements placements =
     showPosition (Just x) = toChar x
 
 search :: ProteinMap -> Position -> [Element] -> Maybe Integer
-search placements position [] = (unsafePerformIO $ do {printPlacements placements; putStrLn ""; return (Just 0) })
+--search placements position [] = (unsafePerformIO $ do {printPlacements placements; putStrLn ""; return (Just 0) })
+search placements position [] = (Just 0)
 search placements position (next:rest) = Prelude.foldr choose Nothing (Prelude.map searchNeighbour freeNeighbours)
   where
     freeNeighbours :: [Position]
     freeNeighbours = Prelude.filter (isFree placements) (neighbours position)
+    searchNeighbour :: Position -> Maybe Integer
     searchNeighbour n =
       (liftM (placedBonds +)) (search newPlacements n rest)
       where
@@ -64,13 +70,24 @@ search placements position (next:rest) = Prelude.foldr choose Nothing (Prelude.m
     choose (Just a) Nothing = Just a
     choose (Just a) (Just b) = Just (max a b)
 
-optimise :: [Element] -> Maybe Integer
+optimise :: [Element] -> Integer
 optimise (p1:p2:protein) =
-    (liftM ((countBonds placements (0,1)) +)) (search placements (0,1) protein)
+    fromJust $ (liftM ((countBonds placements (0,1)) +)) (search placements (0,1) protein)
   where 
     placements = fromList [((0,0), p1), ((0, 1), p2)] :: ProteinMap
 
+generateStrings :: Integer -> [a] -> [[a]]
+generateStrings 0 _ = [[]]
+generateStrings n l = [x:l2 | l2 <- generateStrings (n-1) l, x <- l]
+
+main :: IO Integer
 main = do
   putStrLn "Project Euler 300"
-  let test = fromString "HPPH"
-  putStrLn $ show $ optimise test
+  counts <- forM (generateStrings 8 [Hydrophobic, Polar]) (\x -> do
+    --putStrLn $ (toString x) ++ " " ++ (show $ optimise x)
+    return $ optimise x
+    )
+  putStrLn $ "Number: " ++ (show . length) counts
+  putStrLn $ "Total: " ++ (show . sum) counts
+  putStrLn $ "Average: " ++ show( (fromIntegral $ sum counts) / (fromIntegral $ length counts))
+  return $ sum counts
