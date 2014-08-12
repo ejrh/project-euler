@@ -4,7 +4,7 @@ import Control.Monad
 import System.IO.Unsafe
 
 data Element = Hydrophobic | Polar
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 type Pos = Integer
 
@@ -80,12 +80,23 @@ generateStrings :: Integer -> [a] -> [[a]]
 generateStrings 0 _ = [[]]
 generateStrings n l = [x:l2 | l2 <- generateStrings (n-1) l, x <- l]
 
+-- Perform a weighted optimisation of the string; if the string is a palandrome, then
+-- the weight is 1.  If the string comes before its reversal, then the weight is 2.  
+-- But if the string comes after its reversal then the weight is 0 and the optimisation
+-- does not need to be calculated!  (The score would be the same as the reversed string's
+-- which gets the weight 2.)
+weightedOptimise :: [Element] -> Integer
+weightedOptimise x = case (compare x (reverse x)) of
+  LT -> 2 * (optimise x)
+  EQ -> optimise x
+  GT -> 0
+
 main :: IO Integer
 main = do
   putStrLn "Project Euler 300"
-  counts <- forM (generateStrings 8 [Hydrophobic, Polar]) (\x -> do
-    --putStrLn $ (toString x) ++ " " ++ (show $ optimise x)
-    return $ optimise x
+  counts <- forM (generateStrings 12 [Hydrophobic, Polar]) (\x -> do
+    --putStrLn $ (toString x) ++ " " ++ (show $ weightedOptimise x)
+    return $ weightedOptimise x
     )
   putStrLn $ "Number: " ++ (show . length) counts
   putStrLn $ "Total: " ++ (show . sum) counts
