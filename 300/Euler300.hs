@@ -1,4 +1,5 @@
-import Data.Map
+import Prelude hiding (lookup)
+import Data.Map (Map, lookup, foldrWithKey, insert, fromList)
 import Data.Maybe
 import Control.Monad
 import System.IO.Unsafe
@@ -21,23 +22,23 @@ toChar Hydrophobic = 'H'
 toChar Polar = 'P'
 
 fromString :: String -> [Element]
-fromString = Prelude.map fromChar
+fromString = map fromChar
 
 toString :: [Element] -> String
-toString = Prelude.map toChar
+toString = map toChar
 
 isFree :: ProteinMap -> Position -> Bool
-isFree placements position = (Data.Map.lookup position placements) == Nothing
+isFree placements position = (lookup position placements) == Nothing
 
 isHydrophobic :: ProteinMap -> Position -> Bool
-isHydrophobic placements position = (Data.Map.lookup position placements) == Just Hydrophobic
+isHydrophobic placements position = (lookup position placements) == Just Hydrophobic
 
 neighbours :: Position -> [Position]
 neighbours (x, y) = [(x + x1, y + y1) | (x1,y1) <- [(0,1), (1,0), (0,-1), (-1,0)]]
 
 countBonds :: ProteinMap -> Position -> Integer
 countBonds placements position = if isHydrophobic placements position
-  then (toInteger . length . Prelude.filter (\x -> isHydrophobic placements x) . neighbours) position
+  then (toInteger . length . filter (\x -> isHydrophobic placements x) . neighbours) position
   else 0
 
 getBounds :: ProteinMap -> (Pos, Pos, Pos, Pos)
@@ -48,17 +49,17 @@ printPlacements placements =
   let (minX,minY,maxX,maxY) = getBounds placements in
     forM [minY..maxY] (\y -> printRow y [minX..maxX])
   where
-    printRow y xs = putStrLn $ show y ++ " " ++ Prelude.map (\x -> showPosition $ Data.Map.lookup (x, y) placements) xs
+    printRow y xs = putStrLn $ show y ++ " " ++ map (\x -> showPosition $ lookup (x, y) placements) xs
     showPosition Nothing = ' '
     showPosition (Just x) = toChar x
 
 search :: ProteinMap -> Position -> [Element] -> Maybe Integer
 --search placements position [] = (unsafePerformIO $ do {printPlacements placements; putStrLn ""; return (Just 0) })
 search placements position [] = (Just 0)
-search placements position (next:rest) = Prelude.foldr choose Nothing (Prelude.map searchNeighbour freeNeighbours)
+search placements position (next:rest) = foldr choose Nothing (map searchNeighbour freeNeighbours)
   where
     freeNeighbours :: [Position]
-    freeNeighbours = Prelude.filter (isFree placements) (neighbours position)
+    freeNeighbours = filter (isFree placements) (neighbours position)
     searchNeighbour :: Position -> Maybe Integer
     searchNeighbour n =
       (liftM (placedBonds +)) (search newPlacements n rest)
