@@ -3,6 +3,10 @@ import Data.Map (Map, lookup, foldrWithKey, insert, fromList)
 import Data.Maybe
 import Control.Monad
 import System.IO.Unsafe
+import Data.Time.Clock
+import Control.Parallel.Strategies
+import Control.DeepSeq
+import System.Environment
 
 data Element = Hydrophobic | Polar
   deriving (Eq, Ord, Show)
@@ -92,14 +96,22 @@ weightedOptimise x = case (compare x (reverse x)) of
   EQ -> optimise x
   GT -> 0
 
+optimiseStrings :: Integer -> [Element] -> [Integer]
+optimiseStrings len suffix = map (\x -> weightedOptimise $ x ++ suffix) (generateStrings len [Hydrophobic, Polar])
+
+optimiseStringsInParallel :: Integer -> [Element] -> [Integer]
+optimiseStringsInParallel len suffix = concat $ runEval $ do { results <- forM (generateStrings 3 [Hydrophobic, Polar]) (\x -> rpar $ force $ optimiseStrings (len - 3) x) ; rseq results; return results }
+
 main :: IO Integer
 main = do
-  putStrLn "Project Euler 300"
-  counts <- forM (generateStrings 12 [Hydrophobic, Polar]) (\x -> do
-    --putStrLn $ (toString x) ++ " " ++ (show $ weightedOptimise x)
-    return $ weightedOptimise x
-    )
+  [stringLengthStr] <- getArgs
+  let stringLength = (read stringLengthStr :: Integer)
+  startTime <- getCurrentTime
+  putStrLn "Project Euler 300 - Protein Folding"
+  let counts = optimiseStringsInParallel stringLength []
   putStrLn $ "Number: " ++ (show . length) counts
   putStrLn $ "Total: " ++ (show . sum) counts
-  putStrLn $ "Average: " ++ show( (fromIntegral $ sum counts) / (fromIntegral $ length counts))
+  putStrLn $ "Average: " ++ show ((fromIntegral $ sum counts) / (fromIntegral $ length counts))
+  stopTime <- getCurrentTime
+  putStrLn $ "Time taken: " ++ show (diffUTCTime stopTime startTime)
   return $ sum counts
